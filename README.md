@@ -186,7 +186,7 @@ Match on it with `CDCChange.$match` or `Match.tag`.
 pnpm install
 pnpm typecheck
 pnpm build
-pnpm example   # runs examples/demo.ts against a local Postgres
+pnpm example   # installs examples/ deps (pg-cdc from npm) and runs examples/demo.ts
 ```
 
 ## License

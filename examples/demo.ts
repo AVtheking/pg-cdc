@@ -1,6 +1,6 @@
 import { Effect, Logger, Stream } from "effect";
 import { NodeRuntime } from "@effect/platform-node";
-import * as PostgresCDC from "../src/index.ts"
+import * as PostgresCDC from "pg-cdc"
 
 const program = Effect.gen(function* () {
     const cdc = yield* PostgresCDC.make({

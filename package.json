@@ -46,7 +46,7 @@
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm run clean && pnpm run build",
-    "example": "bun examples/demo.ts",
+    "example": "pnpm --dir examples install && pnpm --dir examples demo",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "packageManager": "pnpm@10.33.4",
