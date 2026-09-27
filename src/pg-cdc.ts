@@ -137,7 +137,9 @@ export const make = Effect.fn(function* (config: Config) {
     return {
         transaction,
         changes: transaction.pipe(
-            Stream.flatMap((tx) => Stream.fromIterable(tx.changes))
+            Stream.flatMap((tx) => Stream.fromIterable(tx.changes).pipe(
+                Stream.concat(Stream.fromEffect(tx.acknowledge).pipe(Stream.drain))
+            ))
         )
     }
 })
