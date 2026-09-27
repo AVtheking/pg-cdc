@@ -1,6 +1,11 @@
 import { Data, Effect } from "effect";
 import { PgReplError } from "pg-replicator";
 
+type Before = {
+    kind: "full" | "key";
+    rows: Record<string, unknown>;
+}
+
 export type CDCChange = Data.TaggedEnum<{
     Insert: {
         schema: string;
@@ -10,13 +15,13 @@ export type CDCChange = Data.TaggedEnum<{
     Update: {
         schema: string;
         table: string;
-        before?: Record<string, unknown>;
+        before?: Before;
         after: Record<string, unknown>;
     }
     Delete: {
         schema: string;
         table: string;
-        before?: Record<string, unknown>;
+        before?: Before;
     }
 }>
 

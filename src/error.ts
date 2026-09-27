@@ -5,3 +5,9 @@ export class PostgresConnectionError extends Data.TaggedError("PostgresConnectio
         super({ message });
     }
 }
+
+export class RelationNotFound extends Data.TaggedError("RelationNotFound")<{ relationId: number }> {
+    constructor(relationId: number) {
+        super({ relationId });
+    }
+}
