@@ -4,8 +4,8 @@ import * as PostgresCDC from "../src/index.ts"
 
 const program = Effect.gen(function* () {
     const cdc = yield* PostgresCDC.make({
-        connectionString: "postgres://postgres:postgres@localhost:5434/syncengine",
-        publication: "sync_pub",
+        connectionString: "postgres://postgres:postgres@localhost:5432/postgres",
+        publication: "my_pub",
         slot: "my_slot",
     })
 
@@ -20,6 +20,7 @@ const program = Effect.gen(function* () {
         Stream.runForEach((tx) =>
             Effect.gen(function* () {
                 //publishToKafka()
+                //sendMessageToClickhouse()
                 yield* Effect.logInfo(`Transaction: ${tx.xid} commitLSN: ${tx.commitLSN}`)
                 yield* Effect.logInfo(JSON.stringify(tx.changes, null, 2))
                 yield* tx.acknowledge

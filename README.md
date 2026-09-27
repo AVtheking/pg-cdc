@@ -27,7 +27,7 @@ publication for the tables you want to capture.
 -- postgresql.conf (requires a restart)
 -- wal_level = logical
 
-CREATE PUBLICATION sync_pub FOR TABLE todos;
+CREATE PUBLICATION my_pub FOR TABLE todos;
 
 -- Optional: include full old-row values on UPDATE / DELETE.
 -- Without this, `before` only contains the primary key.
@@ -36,6 +36,9 @@ ALTER TABLE todos REPLICA IDENTITY FULL;
 
 The connecting role needs the `REPLICATION` attribute (or be a superuser).
 The replication slot is created on first run if it does not exist.
+
+[`examples/init.sql`](./examples/init.sql) contains a complete schema
+(table, publication, and seed rows) that works with `examples/demo.ts`.
 
 ## Usage
 
@@ -51,8 +54,8 @@ import * as PostgresCDC from "pg-cdc"
 
 const program = Effect.gen(function* () {
   const cdc = yield* PostgresCDC.make({
-    connectionString: "postgres://postgres:postgres@localhost:5432/app",
-    publication: "sync_pub",
+    connectionString: "postgres://postgres:postgres@localhost:5432/postgres",
+    publication: "my_pub",
     slot: "app_slot",
   })
 
@@ -84,7 +87,7 @@ const program = Effect.gen(function* () {
 })
 
 program.pipe(
-  Effect.provide(layer({ connectionString: "...", publication: "sync_pub", slot: "app_slot" }))
+  Effect.provide(layer({ connectionString: "...", publication: "my_pub", slot: "app_slot" }))
 )
 ```
 
