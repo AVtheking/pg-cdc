@@ -23,7 +23,7 @@ export type CDCChange = Data.TaggedEnum<{
 export interface CDCTransaction {
     xid: number;
     // beginLSN: bigint;
-    commitLSN: bigint;
+    commitLSN: string;
     changes: CDCChange[]
     acknowledge: Effect.Effect<void, PgReplError>
 }

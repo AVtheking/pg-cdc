@@ -1,17 +1,18 @@
-import { Effect, Match, Stream } from "effect";
+import { Context, Effect, Layer, Match, Stream } from "effect";
 import pg from "pg";
 import * as PgReplicator from "pg-replicator";
 import { CDCChange, CDCTransaction } from "./types";
+import { PostgresConnectionError } from "./error";
 
-interface Config {
+export interface Config {
     connectionString: string;
     publication: string;
     slot: string
 }
 
-export interface PostgresCDC {
-    transaction: Stream.Stream<any>
-    changes: Stream.Stream<any>
+export interface PostgresCDCService {
+    transaction: Stream.Stream<CDCTransaction, PgReplicator.PgReplError>
+    changes: Stream.Stream<CDCChange, PgReplicator.PgReplError>
 }
 
 interface State {
@@ -21,7 +22,10 @@ interface State {
 
 type Step = readonly [State, ReadonlyArray<CDCTransaction>]
 
+export class PostgresCDC extends Context.Service<PostgresCDC, PostgresCDCService>()("PostgresCDC") { }
+
 export const make = Effect.fn(function* (config: Config) {
+
     const client = yield* Effect.acquireRelease(
         Effect.tryPromise({
             try: async () => {
@@ -32,7 +36,8 @@ export const make = Effect.fn(function* (config: Config) {
                 await client.connect()
                 return client
             },
-            catch: (error) => Effect.die(error)
+            catch: (error) =>
+                new PostgresConnectionError(error instanceof Error ? error.message : "Unknown error")
 
         }),
         (client) => Effect.promise(() => client.end())
@@ -40,12 +45,15 @@ export const make = Effect.fn(function* (config: Config) {
 
     const pgReplicator = yield* PgReplicator.fromPg(client)
 
+
     const startLSN = yield* pgReplicator.createReplicationSlot({
         slotName: config.slot,
         outputPlugin: "pgoutput",
     }).pipe(
         Effect.map((slot) => slot.consistentPoint),
-        Effect.catchTag("SlotAlreadyExists", () => Effect.succeed(0n)),
+        Effect.catchTag("SlotAlreadyExists", () =>
+            Effect.logInfo(`Slot ${config.slot} already exists`).pipe(Effect.as(0n))
+        ),
     )
 
     const toChange = (rel: { schema: string, table: string }, msg: PgReplicator.PgOutput) =>
@@ -72,7 +80,7 @@ export const make = Effect.fn(function* (config: Config) {
                 return CDCChange.Delete({
                     schema: rel.schema,
                     table: rel.table,
-                    before: del.oldTupleData ? {
+                    before: del.rows ? {
                         kind: del.oldTupleKind === "O" ? "full" : "key", rows: del.rows
                     } : undefined
                 })
@@ -99,7 +107,7 @@ export const make = Effect.fn(function* (config: Config) {
                             state.relations.set(msg.relationId, { schema: msg.namespace, table: msg.name })
                             return [state, []]
                         case "Begin":
-                            state.currentTransaction.xid = msg.xid
+                            state.currentTransaction = { xid: msg.xid, changes: [] }
                             return [state, []]
                         case "Insert":
                         case "Update":
@@ -118,9 +126,9 @@ export const make = Effect.fn(function* (config: Config) {
                             if (!changes) return [state, []] // TODO: raise error here
                             return [state, [{
                                 xid,
-                                commitLSN: msg.commitLSN,
+                                commitLSN: PgReplicator.formatLSN(msg.commitLSN),
                                 changes,
-                                acknowledge: pgReplicator.ack(msg.commitLSN)
+                                acknowledge: pgReplicator.ack(msg.endLSN)
                             }]]
 
                         default:
@@ -133,3 +141,5 @@ export const make = Effect.fn(function* (config: Config) {
         changes: Stream.die(new Error("Not implemented")),
     }
 })
+
+export const layer = (config: Config) => Layer.effect(PostgresCDC, make(config))

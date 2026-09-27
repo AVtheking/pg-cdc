@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "example": "bun examples/demo.ts"
   },
   "type": "module",
   "keywords": [],
@@ -16,6 +17,7 @@
     "pg-replicator": "^0.1.0"
   },
   "devDependencies": {
+    "pg": "^8.23.0",
     "@effect/platform-node": "4.0.0-rc.115",
     "@types/node": "^22.20.2",
     "@types/pg": "^8.23.1"

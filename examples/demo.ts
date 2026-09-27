@@ -1,11 +1,11 @@
-import { Effect, Stream } from "effect";
+import { Effect, Logger, Stream } from "effect";
 import { NodeRuntime } from "@effect/platform-node";
 import * as PostgresCDC from "../src/pg-cdc.ts"
 
 const program = Effect.fn(function* () {
     const cdc = yield* PostgresCDC.make({
-        connectionString: "postgres://postgres:postgres@localhost:5432/postgres",
-        publication: "my_pub",
+        connectionString: "postgres://postgres:postgres@localhost:5434/syncengine",
+        publication: "sync_pub",
         slot: "my_slot",
     })
 
@@ -13,13 +13,15 @@ const program = Effect.fn(function* () {
         Stream.runForEach((tx) =>
             Effect.gen(function* () {
                 //publishToKafka()
-                yield* Effect.logInfo(`Transaction: ${tx.xid}`)
-                yield* Effect.logInfo(`Changes: ${tx.changes.map(c => c._tag).join(", ")}`)
+                yield* Effect.logInfo(`Transaction: ${tx.xid} commitLSN: ${tx.commitLSN}`)
+                yield* Effect.logInfo(JSON.stringify(tx.changes, null, 2))
+                yield* tx.acknowledge
             }))
     )
 })
 
 program().pipe(
     Effect.scoped,
+    Effect.provide(Logger.layer([Logger.consolePretty()])),
     NodeRuntime.runMain
 )
