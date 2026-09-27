@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "demo": "bun demo.ts"
+    "demo": "bun demo.ts",
+    "layer": "bun layer.ts"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-rc.115",

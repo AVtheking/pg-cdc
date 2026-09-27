@@ -100,6 +100,9 @@ Layer.succeed(PostgresCDC, {
 })
 ```
 
+See [`examples/layer.ts`](./examples/layer.ts) for a complete program that
+composes `PostgresCDC` with a downstream service.
+
 ## API
 
 ### `make(config): Effect<PostgresCDCService, PostgresConnectionError | PgReplError, Scope>`
