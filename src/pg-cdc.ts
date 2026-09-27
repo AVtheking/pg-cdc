@@ -42,8 +42,6 @@ export const make = Effect.fn(function* (config: Config) {
     )
 
     const pgReplicator = yield* PgReplicator.fromPg(client)
-
-
     const startLSN = yield* pgReplicator.createReplicationSlot({
         slotName: config.slot,
         outputPlugin: "pgoutput",
@@ -86,57 +84,61 @@ export const make = Effect.fn(function* (config: Config) {
             Match.orElse(() => undefined)
         )
 
-    return {
-        transaction: pgReplicator.startReplication({
-            slot: config.slot,
-            publication: config.publication,
-            startLSN,
-            protoVersion: 2
-        }).pipe(
-            Stream.mapAccumEffect(
-                (): State => ({
-                    relations: new Map(),
-                    currentTransaction: { xid: 0, changes: [] }
-                }),
-                (state, msg): Effect.Effect<Step, RelationNotFound> => {
-                    switch (msg._tag) {
-                        case "Relation":
-                            state.relations.set(msg.relationId, { schema: msg.namespace, table: msg.name })
-                            return Effect.succeed([state, []])
-                        case "Begin":
-                            state.currentTransaction = { xid: msg.xid, changes: [] }
-                            return Effect.succeed([state, []])
-                        case "Insert":
-                        case "Update":
-                        case "Delete":
-                            const relation = state.relations.get(msg.relationId)
-                            if (!relation) return Effect.fail(new RelationNotFound(msg.relationId))
+    const transaction = pgReplicator.startReplication({
+        slot: config.slot,
+        publication: config.publication,
+        startLSN,
+        protoVersion: 2
+    }).pipe(
+        Stream.mapAccumEffect(
+            (): State => ({
+                relations: new Map(),
+                currentTransaction: { xid: 0, changes: [] }
+            }),
+            (state, msg): Effect.Effect<Step, RelationNotFound> => {
+                switch (msg._tag) {
+                    case "Relation":
+                        state.relations.set(msg.relationId, { schema: msg.namespace, table: msg.name })
+                        return Effect.succeed([state, []])
+                    case "Begin":
+                        state.currentTransaction = { xid: msg.xid, changes: [] }
+                        return Effect.succeed([state, []])
+                    case "Insert":
+                    case "Update":
+                    case "Delete":
+                        const relation = state.relations.get(msg.relationId)
+                        if (!relation) return Effect.fail(new RelationNotFound(msg.relationId))
 
-                            const change = toChange(relation, msg)
-                            if (!change) return Effect.succeed([state, []])
+                        const change = toChange(relation, msg)
+                        if (!change) return Effect.succeed([state, []])
 
-                            state.currentTransaction.changes.push(change)
-                            return Effect.succeed([state, []])
-                        case "Commit":
-                            const xid = state.currentTransaction.xid
-                            const changes = state.currentTransaction.changes
-                            if (changes.length === 0) return Effect.succeed([state, []])
+                        state.currentTransaction.changes.push(change)
+                        return Effect.succeed([state, []])
+                    case "Commit":
+                        const xid = state.currentTransaction.xid
+                        const changes = state.currentTransaction.changes
+                        if (changes.length === 0) return Effect.succeed([state, []])
 
-                            return Effect.succeed([state, [{
-                                xid,
-                                commitLSN: PgReplicator.formatLSN(msg.commitLSN),
-                                changes,
-                                acknowledge: pgReplicator.ack(msg.endLSN)
-                            }]])
+                        return Effect.succeed([state, [{
+                            xid,
+                            commitLSN: PgReplicator.formatLSN(msg.commitLSN),
+                            changes,
+                            acknowledge: pgReplicator.ack(msg.endLSN)
+                        }]])
 
-                        default:
-                            return Effect.succeed([state, []])
-                    }
+                    default:
+                        return Effect.succeed([state, []])
                 }
+            }
 
-            )
-        ),
-        changes: Stream.die(new Error("Not implemented")),
+        )
+    )
+
+    return {
+        transaction,
+        changes: transaction.pipe(
+            Stream.flatMap((tx) => Stream.fromIterable(tx.changes))
+        )
     }
 })
 

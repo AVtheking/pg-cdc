@@ -9,6 +9,13 @@ const program = Effect.fn(function* () {
         slot: "my_slot",
     })
 
+    // yield* cdc.changes.pipe(
+    //     Stream.filter((ev) => ev.table === "todos"),
+    //     Stream.runForEach((ev) => Effect.gen(function* () {
+    //         yield* Effect.logInfo(`Change from change stream: ${JSON.stringify(ev, null, 2)}`)
+    //     }))
+    // )
+
     yield* cdc.transaction.pipe(
         Stream.runForEach((tx) =>
             Effect.gen(function* () {
