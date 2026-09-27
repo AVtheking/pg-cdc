@@ -1,8 +1,8 @@
 import { Effect, Logger, Stream } from "effect";
 import { NodeRuntime } from "@effect/platform-node";
-import * as PostgresCDC from "../src/pg-cdc.ts"
+import * as PostgresCDC from "../src/index.ts"
 
-const program = Effect.fn(function* () {
+const program = Effect.gen(function* () {
     const cdc = yield* PostgresCDC.make({
         connectionString: "postgres://postgres:postgres@localhost:5434/syncengine",
         publication: "sync_pub",
@@ -27,7 +27,7 @@ const program = Effect.fn(function* () {
     )
 })
 
-program().pipe(
+program.pipe(
     Effect.scoped,
     Effect.provide(Logger.layer([Logger.consolePretty()])),
     NodeRuntime.runMain

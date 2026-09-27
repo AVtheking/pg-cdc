@@ -1,25 +1,68 @@
 {
   "name": "pg-cdc",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "example": "bun examples/demo.ts"
+  "version": "0.1.0",
+  "description": "Postgres change data capture (CDC) as Effect streams, built on logical replication and pgoutput",
+  "keywords": [
+    "postgres",
+    "postgresql",
+    "cdc",
+    "change-data-capture",
+    "logical-replication",
+    "pgoutput",
+    "effect",
+    "stream"
+  ],
+  "author": "Ankit Varshney <lyfflame45@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AVtheking/pg-cdc.git"
   },
+  "bugs": {
+    "url": "https://github.com/AVtheking/pg-cdc/issues"
+  },
+  "homepage": "https://github.com/AVtheking/pg-cdc#readme",
   "type": "module",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm run clean && pnpm run build",
+    "example": "bun examples/demo.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "packageManager": "pnpm@10.33.4",
+  "peerDependencies": {
+    "effect": "^4.0.0-rc.115",
+    "pg": "^8.0.0"
+  },
   "dependencies": {
-    "effect": "4.0.0-rc.115",
     "pg-replicator": "^0.1.0"
   },
   "devDependencies": {
-    "pg": "^8.23.0",
     "@effect/platform-node": "4.0.0-rc.115",
     "@types/node": "^22.20.2",
-    "@types/pg": "^8.23.1"
+    "@types/pg": "^8.23.1",
+    "effect": "4.0.0-rc.115",
+    "pg": "^8.23.0",
+    "typescript": "^7.0.2"
   }
 }

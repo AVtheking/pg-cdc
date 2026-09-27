@@ -1,8 +1,8 @@
 import { Context, Effect, Layer, Match, Stream } from "effect";
 import pg from "pg";
 import * as PgReplicator from "pg-replicator";
-import { CDCChange, CDCTransaction } from "./types";
-import { PostgresConnectionError, RelationNotFound } from "./error";
+import { CDCChange, type CDCTransaction } from "./types.ts";
+import { PostgresConnectionError, RelationNotFound } from "./error.ts";
 
 export interface Config {
     connectionString: string;
@@ -21,7 +21,7 @@ export interface PostgresCDCService {
     transaction: Stream.Stream<CDCTransaction, PgReplicator.PgReplError | RelationNotFound>
     changes: Stream.Stream<CDCChange, PgReplicator.PgReplError | RelationNotFound>
 }
-export class PostgresCDC extends Context.Service<PostgresCDC, PostgresCDCService>()("PostgresCDC") { }
+export class PostgresCDC extends Context.Service<PostgresCDC, PostgresCDCService>()("pg-cdc/PostgresCDC") { }
 
 export const make = Effect.fn(function* (config: Config) {
     const client = yield* Effect.acquireRelease(
@@ -35,8 +35,10 @@ export const make = Effect.fn(function* (config: Config) {
                 return client
             },
             catch: (error) =>
-                new PostgresConnectionError(error instanceof Error ? error.message : "Unknown error")
-
+                new PostgresConnectionError({
+                    message: error instanceof Error ? error.message : "Unknown error",
+                    cause: error
+                })
         }),
         (client) => Effect.promise(() => client.end())
     )
