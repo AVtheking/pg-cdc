@@ -2,12 +2,19 @@ import { Context, Effect, Layer, Match, Stream } from "effect";
 import pg from "pg";
 import * as PgReplicator from "pg-replicator";
 import { CDCChange, type CDCTransaction } from "./types.ts";
-import { PostgresConnectionError, RelationNotFound } from "./error.ts";
+import { PostgresConnectionError, PostgresQueryError, RelationNotFound } from "./error.ts";
+
+interface Publication {
+    name: string;
+    tables: string[];
+    createIfMissing: boolean;
+}
 
 export interface Config {
     connectionString: string;
-    publication: string;
+    publication: string | Publication;
     slot: string
+    // replicaIdentity: "full" | "key";
 }
 
 interface State {
@@ -21,6 +28,63 @@ export interface PostgresCDCService {
     transaction: Stream.Stream<CDCTransaction, PgReplicator.PgReplError | RelationNotFound>
     changes: Stream.Stream<CDCChange, PgReplicator.PgReplError | RelationNotFound>
 }
+
+const toChange = (rel: { schema: string, table: string }, msg: PgReplicator.PgOutput) =>
+    Match.value(msg).pipe(
+        Match.withReturnType<CDCChange | undefined>(),
+        Match.tag("Insert", (insert) => {
+            return CDCChange.Insert({
+                schema: rel.schema,
+                table: rel.table,
+                after: insert.rows!
+            })
+        }),
+        Match.tag("Update", (update) => {
+            return CDCChange.Update({
+                schema: rel.schema,
+                table: rel.table,
+                before: update.oldRows ? {
+                    kind: update.oldTupleKind === "O" ? "full" : "key", rows: update.oldRows
+                } : undefined,
+                after: update.newRows!
+            })
+        }),
+        Match.tag("Delete", (del) => {
+            return CDCChange.Delete({
+                schema: rel.schema,
+                table: rel.table,
+                before: del.rows ? {
+                    kind: del.oldTupleKind === "O" ? "full" : "key", rows: del.rows
+                } : undefined
+            })
+        }),
+        Match.orElse(() => undefined)
+    )
+
+const setupPublication = Effect.fn(function* (client: pg.Client, publication: string | Publication) {
+    const sql = (query: string) =>
+        Effect.tryPromise({
+            try: () => client.query(query),
+            catch: (error) => new PostgresQueryError({
+                message: `Failed to execute query: ${query}`,
+                cause: error
+            })
+        })
+
+    if (typeof publication === "string") {
+        return publication;
+    }
+
+    const existingPublication = yield* sql(`SELECT 1 FROM pg_publication WHERE pubname = ${pg.escapeLiteral(publication.name)}`)
+    if (existingPublication.rows.length > 0) return publication.name;
+
+    const tables = publication.tables.map((table) => table.split(".").map(pg.escapeIdentifier).join("."))
+    yield* sql(`CREATE PUBLICATION ${pg.escapeIdentifier(publication.name)} FOR TABLE ${tables.join(", ")}`)
+
+    yield* Effect.logInfo(`Created publication ${publication.name}`)
+    return publication.name;
+})
+
 export class PostgresCDC extends Context.Service<PostgresCDC, PostgresCDCService>()("pg-cdc/PostgresCDC") { }
 
 export const make = Effect.fn(function* (config: Config) {
@@ -44,6 +108,7 @@ export const make = Effect.fn(function* (config: Config) {
     )
 
     const pgReplicator = yield* PgReplicator.fromPg(client)
+    const publication = yield* setupPublication(client, config.publication)
     const startLSN = yield* pgReplicator.createReplicationSlot({
         slotName: config.slot,
         outputPlugin: "pgoutput",
@@ -54,41 +119,9 @@ export const make = Effect.fn(function* (config: Config) {
         ),
     )
 
-    const toChange = (rel: { schema: string, table: string }, msg: PgReplicator.PgOutput) =>
-        Match.value(msg).pipe(
-            Match.withReturnType<CDCChange | undefined>(),
-            Match.tag("Insert", (insert) => {
-                return CDCChange.Insert({
-                    schema: rel.schema,
-                    table: rel.table,
-                    after: insert.rows!
-                })
-            }),
-            Match.tag("Update", (update) => {
-                return CDCChange.Update({
-                    schema: rel.schema,
-                    table: rel.table,
-                    before: update.oldRows ? {
-                        kind: update.oldTupleKind === "O" ? "full" : "key", rows: update.oldRows
-                    } : undefined,
-                    after: update.newRows!
-                })
-            }),
-            Match.tag("Delete", (del) => {
-                return CDCChange.Delete({
-                    schema: rel.schema,
-                    table: rel.table,
-                    before: del.rows ? {
-                        kind: del.oldTupleKind === "O" ? "full" : "key", rows: del.rows
-                    } : undefined
-                })
-            }),
-            Match.orElse(() => undefined)
-        )
-
     const transaction = pgReplicator.startReplication({
         slot: config.slot,
-        publication: config.publication,
+        publication,
         startLSN,
         protoVersion: 2
     }).pipe(

@@ -21,3 +21,8 @@ export class RelationNotFound extends Data.TaggedError("RelationNotFound")<{
         super({ relationId });
     }
 }
+
+export class PostgresQueryError extends Data.TaggedError("PostgresQueryError")<{
+    readonly message: string
+    readonly cause?: unknown
+}> { }
