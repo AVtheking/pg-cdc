@@ -1,6 +1,6 @@
 {
   "name": "pg-cdc",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Postgres change data capture (CDC) as Effect streams, built on logical replication and pgoutput",
   "keywords": [
     "postgres",
