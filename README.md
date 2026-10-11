@@ -7,6 +7,11 @@ Postgres change data capture (CDC) as [Effect](https://effect.website) streams.
 `Stream`. Each transaction carries an `acknowledge` effect, so you control
 exactly when the replication slot advances.
 
+Built on [`pg-replicator`](https://github.com/AVtheking/pg-replicator), which
+handles the replication protocol (slot management, `START_REPLICATION`,
+`pgoutput` decoding, and standby status updates). `pg-cdc` adds transaction
+grouping, typed change events, and acknowledgement semantics on top.
+
 > **Status:** early release. The API may change before 1.0. `effect` is
 > currently a 4.0 release candidate.
 
@@ -16,7 +21,8 @@ exactly when the replication slot advances.
 pnpm add pg-cdc effect pg
 ```
 
-`effect` and `pg` are peer dependencies.
+`effect` and `pg` are peer dependencies. `pg-replicator` is a regular
+dependency and is installed automatically.
 
 ## Postgres setup
 
@@ -171,7 +177,7 @@ Match on it with `CDCChange.$match` or `Match.tag`.
 | ------------------------- | --------------------------------------------------------------------- |
 | `PostgresConnectionError` | the replication connection could not be opened (`cause` has details) |
 | `RelationNotFound`        | a row change referenced a table no `Relation` message was seen for    |
-| `PgReplError`             | protocol / decoding error from `pg-replicator`                        |
+| `PgReplError`             | protocol / decoding error from [`pg-replicator`](https://github.com/AVtheking/pg-replicator) |
 
 ## Delivery semantics
 
