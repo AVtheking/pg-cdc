@@ -55,7 +55,7 @@
     "pg": "^8.0.0"
   },
   "dependencies": {
-    "pg-replicator": "^0.1.0"
+    "pg-replicator": "^0.2.0"
   },
   "devDependencies": {
     "@effect/platform-node": "4.0.0-rc.115",

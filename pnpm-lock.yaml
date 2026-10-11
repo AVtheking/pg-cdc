@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       pg-replicator:
-        specifier: ^0.1.0
-        version: 0.1.0(effect@4.0.0-rc.115)(pg@8.23.0)
+        specifier: ^0.2.0
+        version: 0.2.0(effect@4.0.0-rc.115)(pg@8.23.0)
     devDependencies:
       '@effect/platform-node':
         specifier: 4.0.0-rc.115
@@ -236,8 +236,8 @@ packages:
   pg-protocol@1.16.0:
     resolution: {integrity: sha512-sILXutLVjCLjcDuOmvhX5e2Z4cS5qG/6Bu3VkpFwdf/633ElGLpEh9bgmuI5I4sqKqkifQiGyiCcx1HdtrK7tg==}
 
-  pg-replicator@0.1.0:
-    resolution: {integrity: sha512-+nfCDsj+hv/yiYJvICM+w7pyzwySB1c7kAZ6SJeHfDhI9yOaKuzW3VJ/okinvExLRd0HCWI1dvrUeL3OXpVczA==}
+  pg-replicator@0.2.0:
+    resolution: {integrity: sha512-G1cmHH3K8EDz/CRn2Pyzsx3qd1dYT1weBR0dziYBLrOSb2JeXWS/cFf2MSaL+A+tSkWoDtdX4gg6cfThH7Ag8A==}
     engines: {node: '>=20'}
     peerDependencies:
       effect: ^4.0.0-rc.115
@@ -443,7 +443,7 @@ snapshots:
 
   pg-protocol@1.16.0: {}
 
-  pg-replicator@0.1.0(effect@4.0.0-rc.115)(pg@8.23.0):
+  pg-replicator@0.2.0(effect@4.0.0-rc.115)(pg@8.23.0):
     dependencies:
       effect: 4.0.0-rc.115
       pg: 8.23.0

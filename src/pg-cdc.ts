@@ -99,41 +99,48 @@ export const make = Effect.fn(function* (config: Config) {
             }),
             (state, msg): Effect.Effect<Step, RelationNotFound> => {
                 switch (msg._tag) {
-                    case "Relation":
-                        state.relations.set(msg.relationId, { schema: msg.namespace, table: msg.name })
+                    case "Keepalive":
                         return Effect.succeed([state, []])
-                    case "Begin":
-                        state.currentTransaction = { xid: msg.xid, changes: [] }
-                        return Effect.succeed([state, []])
-                    case "Insert":
-                    case "Update":
-                    case "Delete":
-                        const relation = state.relations.get(msg.relationId)
-                        if (!relation) return Effect.fail(new RelationNotFound(msg.relationId))
+                    case "XLogData":
+                        const xlogData = msg.message
+                        switch (xlogData._tag) {
+                            case "Relation":
+                                state.relations.set(xlogData.relationId, { schema: xlogData.namespace, table: xlogData.name })
+                                return Effect.succeed([state, []])
+                            case "Begin":
+                                state.currentTransaction = { xid: xlogData.xid, changes: [] }
+                                return Effect.succeed([state, []])
+                            case "Insert":
+                            case "Update":
+                            case "Delete":
+                                const relation = state.relations.get(xlogData.relationId)
+                                if (!relation) return Effect.fail(new RelationNotFound(xlogData.relationId))
 
-                        const change = toChange(relation, msg)
-                        if (!change) return Effect.succeed([state, []])
+                                const change = toChange(relation, xlogData)
+                                if (!change) return Effect.succeed([state, []])
 
-                        state.currentTransaction.changes.push(change)
-                        return Effect.succeed([state, []])
-                    case "Commit":
-                        const xid = state.currentTransaction.xid
-                        const changes = state.currentTransaction.changes
-                        if (changes.length === 0) return Effect.succeed([state, []])
+                                state.currentTransaction.changes.push(change)
+                                return Effect.succeed([state, []])
+                            case "Commit":
+                                const xid = state.currentTransaction.xid
+                                const changes = state.currentTransaction.changes
+                                if (changes.length === 0) return Effect.succeed([state, []])
 
-                        return Effect.succeed([state, [{
-                            xid,
-                            commitLSN: PgReplicator.formatLSN(msg.commitLSN),
-                            changes,
-                            acknowledge: pgReplicator.ack(msg.endLSN)
-                        }]])
+                                return Effect.succeed([state, [{
+                                    xid,
+                                    commitLSN: PgReplicator.formatLSN(xlogData.commitLSN),
+                                    changes,
+                                    acknowledge: pgReplicator.ack(xlogData.endLSN)
+                                }]])
 
-                    default:
-                        return Effect.succeed([state, []])
+                            default:
+                                return Effect.succeed([state, []])
+                        }
                 }
             }
 
         )
+
     )
 
     return {
